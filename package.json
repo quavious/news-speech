@@ -9,14 +9,19 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^8.5.9",
     "@types/node": "18.11.9",
     "@types/react": "18.0.25",
     "@types/react-dom": "18.0.8",
+    "argon2": "^0.30.2",
+    "cheerio": "1.0.0-rc.12",
     "eslint": "8.27.0",
     "eslint-config-next": "13.0.2",
+    "jsonwebtoken": "^8.5.1",
     "next": "13.0.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "sass": "^1.56.0",
     "typescript": "4.8.4"
   }
 }
