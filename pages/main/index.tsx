@@ -13,32 +13,35 @@ import {
 } from "@mui/icons-material";
 
 interface NewsModel {
-  title: string;
-  link: string;
+  name: string;
+  url: string;
   description: string;
-  pubDate: string;
+  datePublished: string;
+  thumbnail: string;
+  provider: string;
 }
 
 export const getStaticProps: GetStaticProps = async (context) => {
   const response = await fetch(
-    `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(
-      "정치,사회,경제"
-    )}&display=100`,
+    `https://api.bing.microsoft.com/v7.0/news?mkt=en-US&sortby=date&textDecorations=true&textFormat=HTML&originalImg=true&count=100`,
     {
       headers: {
-        "X-Naver-Client-Id": process.env.NAVER_API_ID ?? "",
-        "X-Naver-Client-Secret": process.env.NAVER_API_PW ?? "",
+        "Ocp-Apim-Subscription-Key": process.env.BING_API_KEY ?? "",
       },
     }
   );
   const data = await response.json();
-  let articles: NewsModel[] = data.items;
-  articles = articles
-    .filter((el) => el.link.includes("news.naver.com"))
-    .map((article) => ({
-      ...article,
-      title: load(article.title).text(),
-      description: load(article.description).text(),
+  let rawArticles: any = data.value;
+  let articles: NewsModel[] = [];
+  articles = rawArticles
+    .filter((el: any) => el.url.includes("www.msn.com"))
+    .map((article: any) => ({
+      name: load(article.name).text().trim(),
+      description: load(article.description).text().trim(),
+      url: article.url,
+      datePublished: article.datePublished,
+      provider: article.provider?.[0].name,
+      thumbnail: article.image?.thumbnail.contentUrl,
     }));
   return {
     props: {
@@ -89,7 +92,7 @@ function Main(props: { articles: NewsModel[] }) {
     }
     const voice = synthesis
       .getVoices()
-      .find((voice) => voice.lang.includes("ko"));
+      .find((voice) => voice.lang.includes("en"));
     if (!voice) {
       return;
     }
@@ -146,7 +149,7 @@ function Main(props: { articles: NewsModel[] }) {
                   }
                   const article = array[index];
                   const response = await fetch(
-                    `/api/news?url=${encodeURIComponent(article.link)}`,
+                    `/api/news?url=${encodeURIComponent(article.url)}`,
                     {
                       headers: {
                         "x-user-agent": global.navigator.userAgent,
@@ -157,7 +160,7 @@ function Main(props: { articles: NewsModel[] }) {
                   if (data.textArray.length <= 0) {
                     continue;
                   }
-                  for (const text of [article.title, ...data.textArray]) {
+                  for (const text of [article.name, ...data.textArray]) {
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.voice = voice;
                     utterance.pitch = 0.85;
@@ -172,17 +175,13 @@ function Main(props: { articles: NewsModel[] }) {
             </button>
           </div>
           <article className="article">
-            <h2 className="articleTitle">{selectedNews.title}</h2>
+            <h2 className="articleTitle">{selectedNews.name}</h2>
             <p className="articleDescription">{selectedNews.description}</p>
-            <a
-              className="articleLink"
-              href={selectedNews.link}
-              target="__blank"
-            >
+            <a className="articleLink" href={selectedNews.url} target="__blank">
               이동
             </a>
             <h4 className="articlePublished">
-              {new Date(selectedNews.pubDate).toLocaleString()}
+              {new Date(selectedNews.datePublished).toLocaleString()}
             </h4>
           </article>
         </main>
@@ -190,7 +189,7 @@ function Main(props: { articles: NewsModel[] }) {
           <button
             className="circleButton"
             onClick={() => {
-              if (newsIndex < 0) {
+              if (newsIndex <= 0) {
                 return;
               }
               synthesis?.cancel();
@@ -222,7 +221,7 @@ function Main(props: { articles: NewsModel[] }) {
               className="circleButton"
               onClick={async () => {
                 const response = await fetch(
-                  `/api/news?url=${encodeURIComponent(selectedNews.link)}`,
+                  `/api/news?url=${encodeURIComponent(selectedNews.url)}`,
                   {
                     headers: {
                       "x-user-agent": global.navigator.userAgent,
@@ -232,19 +231,13 @@ function Main(props: { articles: NewsModel[] }) {
                 const data: { textArray: string[] } = await response.json();
                 if (data.textArray.length <= 0) {
                 }
-                const array = [selectedNews.title, ...data.textArray];
+                const array = [selectedNews.name, ...data.textArray];
                 for (let index = 0; index < array.length; index++) {
                   const utterance = new SpeechSynthesisUtterance(array[index]);
                   utterance.voice = voice;
                   utterance.pitch = 0.85;
                   utterance.rate = 1;
                   utterance.volume = 1;
-                  // if (index + 1 === array.length) {
-                  //   console.log("Running...");
-                  //   utterance.onend = function (event) {
-                  //     setNewsIndex(newsIndex + 1);
-                  //   };
-                  // }
                   synthesis?.speak(utterance);
                   setStatus({
                     isPlaying: true,
