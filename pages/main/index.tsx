@@ -2,6 +2,15 @@ import { GetServerSideProps, GetStaticProps } from "next";
 import { load } from "cheerio";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import {
+  NavigateBefore,
+  NavigateNext,
+  NotStarted,
+  PauseCircle,
+  PlayCircle,
+  PlayCircleOutline,
+  StopCircle,
+} from "@mui/icons-material";
 
 interface NewsModel {
   title: string;
@@ -17,8 +26,8 @@ export const getStaticProps: GetStaticProps = async (context) => {
     )}&display=100`,
     {
       headers: {
-        "X-Naver-Client-Id": "qbDjsJwGBqTlXb7cokEP",
-        "X-Naver-Client-Secret": "3Gi9ZYn9uw",
+        "X-Naver-Client-Id": process.env.NAVER_API_ID ?? "",
+        "X-Naver-Client-Secret": process.env.NAVER_API_PW ?? "",
       },
     }
   );
@@ -108,7 +117,18 @@ function Main(props: { articles: NewsModel[] }) {
         }
         .buttons button {
           margin: 0 0.75rem;
-          font-size: 18px;
+        }
+        .circleButton {
+          display: flex;
+          align-items: center;
+          font-size: 24px;
+          width: 52px;
+          height: 40px;
+          justify-content: center;
+        }
+        .playAll {
+          width: 48px;
+          height: 40px;
         }
       `}</style>
       <div>
@@ -116,7 +136,8 @@ function Main(props: { articles: NewsModel[] }) {
           <div style={{ display: "flex", alignItems: "center" }}>
             <h1 className="mainHead">뉴스 스피치</h1>
             <button
-              style={{ margin: "0 0 0 auto", height: "100%", fontSize: 18 }}
+              className="playAll circleButton"
+              style={{ margin: "0 0 0 auto", height: "100%" }}
               onClick={async () => {
                 const array = articles || [];
                 for (let index = 0; index < array.length; index++) {
@@ -147,7 +168,7 @@ function Main(props: { articles: NewsModel[] }) {
                 }
               }}
             >
-              Play All
+              <PlayCircleOutline />
             </button>
           </div>
           <article className="article">
@@ -167,6 +188,7 @@ function Main(props: { articles: NewsModel[] }) {
         </main>
         <section className="buttons">
           <button
+            className="circleButton"
             onClick={() => {
               if (newsIndex < 0) {
                 return;
@@ -179,10 +201,11 @@ function Main(props: { articles: NewsModel[] }) {
               });
             }}
           >
-            Prev
+            <NavigateBefore />
           </button>
           {status.isPlaying && (
             <button
+              className="circleButton"
               onClick={() => {
                 synthesis?.pause();
                 setStatus({
@@ -191,11 +214,12 @@ function Main(props: { articles: NewsModel[] }) {
                 });
               }}
             >
-              Pause
+              <PauseCircle />
             </button>
           )}
           {!status.isPlaying && (
             <button
+              className="circleButton"
               onClick={async () => {
                 const response = await fetch(
                   `/api/news?url=${encodeURIComponent(selectedNews.link)}`,
@@ -229,11 +253,12 @@ function Main(props: { articles: NewsModel[] }) {
                 }
               }}
             >
-              Play
+              <PlayCircle />
             </button>
           )}
           {!status.isPlaying && status.isPaused && (
             <button
+              className="circleButton"
               onClick={() => {
                 synthesis?.resume();
                 setStatus({
@@ -242,11 +267,12 @@ function Main(props: { articles: NewsModel[] }) {
                 });
               }}
             >
-              Resume
+              <NotStarted />
             </button>
           )}
           {status.isPlaying && (
             <button
+              className="circleButton"
               onClick={() => {
                 synthesis?.cancel();
                 setStatus({
@@ -255,10 +281,11 @@ function Main(props: { articles: NewsModel[] }) {
                 });
               }}
             >
-              Stop
+              <StopCircle />
             </button>
           )}
           <button
+            className="circleButton"
             onClick={() => {
               if (newsIndex + 1 === articles.length) {
                 setNewsIndex(0);
@@ -272,7 +299,7 @@ function Main(props: { articles: NewsModel[] }) {
               });
             }}
           >
-            Next
+            <NavigateNext />
           </button>
         </section>
       </div>
