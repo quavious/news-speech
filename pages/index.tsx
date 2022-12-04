@@ -26,7 +26,7 @@ function Index() {
             },
           });
           const data = await response.json();
-          if (!!data.accessToken) {
+          if (!!data?.accessToken) {
             global.window.localStorage.setItem("accessToken", data.accessToken);
             router.push("/main");
           }

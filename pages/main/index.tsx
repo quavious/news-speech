@@ -34,7 +34,7 @@ export const getStaticProps: GetStaticProps = async (context) => {
   let rawArticles: any = data.value;
   let articles: NewsModel[] = [];
   articles = rawArticles
-    .filter((el: any) => el.url.includes("www.msn.com"))
+    .filter((el: any) => el.url.includes("www.msn.com") && el.image)
     .map((article: any) => ({
       name: load(article.name).text().trim(),
       description: load(article.description).text().trim(),
@@ -96,6 +96,7 @@ function Main(props: { articles: NewsModel[] }) {
     if (!voice) {
       return;
     }
+    console.log(voice);
     setVoice(voice);
   }, [synthesis]);
 
