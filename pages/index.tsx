@@ -37,10 +37,16 @@ function Index() {
           name="password"
           value={input}
           onChange={(event) => setInput(event.target.value)}
+          className="px-2 py-1 mr-2"
         />
-        <button type="submit">로그인</button>
+        <button
+          type="submit"
+          className="px-2 py-1 bg-red-600 text-white rounded-sm"
+        >
+          로그인
+        </button>
       </form>
-      <h4 style={{ fontSize: 20 }}>
+      <h4 style={{ fontSize: 20 }} className="mt-2">
         <Link href={"/main"}>메인 페이지로 이동</Link>
       </h4>
     </div>
