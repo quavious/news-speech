@@ -23,7 +23,7 @@ interface NewsModel {
 
 export const getStaticProps: GetStaticProps = async (context) => {
   const response = await fetch(
-    `https://api.bing.microsoft.com/v7.0/news?mkt=en-US&sortby=date&textDecorations=true&textFormat=HTML&originalImg=true&count=100`,
+    `https://api.bing.microsoft.com/v7.0/news?mkt=ko-KR&sortby=date&textDecorations=true&textFormat=HTML&originalImg=true&count=20`,
     {
       headers: {
         "Ocp-Apim-Subscription-Key": process.env.BING_API_KEY ?? "",
@@ -62,11 +62,6 @@ function Main(props: { articles: NewsModel[] }) {
     isPaused: false,
   });
 
-  const selectedNews = useMemo(() => {
-    console.log("Selected", newsIndex);
-    return articles[newsIndex];
-  }, [articles, newsIndex]);
-
   useEffect(() => {
     if (!router) return;
     const accessToken = global.window.localStorage.getItem("accessToken");
@@ -92,7 +87,7 @@ function Main(props: { articles: NewsModel[] }) {
     }
     const voice = synthesis
       .getVoices()
-      .find((voice) => voice.lang.includes("en"));
+      .find((voice) => voice.lang.includes("ko"));
     if (!voice) {
       return;
     }
@@ -100,95 +95,108 @@ function Main(props: { articles: NewsModel[] }) {
     setVoice(voice);
   }, [synthesis]);
 
+  async function onPlay() {
+    setStatus({
+      isPlaying: true,
+      isPaused: false,
+    });
+    for (const article of articles) {
+      const response = await fetch(
+        `/api/news?url=${encodeURIComponent(article.url)}`,
+        {
+          headers: {
+            "x-user-agent": global.navigator.userAgent,
+          },
+        }
+      );
+      const data: { textArray: string[] } = await response.json();
+      if (data.textArray.length <= 0) {
+      }
+      const array = [article.name, ...data.textArray];
+      for (let index = 0; index < array.length; index++) {
+        const utterance = new SpeechSynthesisUtterance(array[index]);
+        utterance.voice = voice;
+        utterance.pitch = 0.85;
+        utterance.rate = 1;
+        utterance.volume = 1;
+        synthesis?.speak(utterance);
+      }
+      if (!status.isPlaying) {
+        break;
+      }
+      await new Promise((res, _) => setTimeout(() => res(0), 6000));
+    }
+  }
+
   return (
     <>
-      <style jsx>{`
-        .main {
-          display: flex;
-          flex-direction: column;
-          width: 100%;
-          max-width: 640px;
-          margin: 0 auto;
-          padding: 1.25rem 2.5rem;
-        }
-        .article {
-          height: 320px;
-        }
-        .buttons {
-          display: flex;
-          justify-content: center;
-          margin: 0 auto;
-        }
-        .buttons button {
-          margin: 0 0.75rem;
-        }
-        .circleButton {
-          display: flex;
-          align-items: center;
-          font-size: 24px;
-          width: 52px;
-          height: 40px;
-          justify-content: center;
-        }
-        .playAll {
-          width: 48px;
-          height: 40px;
-        }
-      `}</style>
-      <div>
-        <main className="main">
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <h1 className="mainHead">뉴스 스피치</h1>
-            <button
-              className="playAll circleButton"
-              style={{ margin: "0 0 0 auto", height: "100%" }}
-              onClick={async () => {
-                const array = articles || [];
-                for (let index = 0; index < array.length; index++) {
-                  if (index < newsIndex) {
-                    continue;
-                  }
-                  const article = array[index];
-                  const response = await fetch(
-                    `/api/news?url=${encodeURIComponent(article.url)}`,
-                    {
-                      headers: {
-                        "x-user-agent": global.navigator.userAgent,
-                      },
+      <div className="mx-auto max-w-3xl w-full pt-4">
+        <main>
+          <div className="flex">
+            <h1 className="text-4xl font-bold">뉴스 스피치</h1>
+            <section className="ml-auto mr-0 flex items-center">
+              {!status.isPlaying && (
+                <button
+                  onClick={() => {
+                    if (status.isPaused) {
+                      setStatus(() => ({ isPaused: false, isPlaying: true }));
+                      synthesis?.resume();
+                    } else {
+                      onPlay();
                     }
-                  );
-                  const data: { textArray: string[] } = await response.json();
-                  if (data.textArray.length <= 0) {
-                    continue;
-                  }
-                  for (const text of [article.name, ...data.textArray]) {
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.voice = voice;
-                    utterance.pitch = 0.85;
-                    utterance.rate = 1;
-                    utterance.volume = 1;
-                    synthesis?.speak(utterance);
-                  }
-                }
-              }}
-            >
-              <PlayCircleOutline />
-            </button>
+                  }}
+                >
+                  <PlayCircleOutline />
+                </button>
+              )}
+              {status.isPlaying && (
+                <>
+                  <button
+                    onClick={() => {
+                      setStatus(() => ({ isPaused: true, isPlaying: false }));
+                      synthesis?.pause();
+                    }}
+                  >
+                    <PauseCircle />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setStatus(() => ({ isPaused: false, isPlaying: false }));
+                      synthesis?.cancel();
+                    }}
+                  >
+                    <StopCircle />
+                  </button>
+                </>
+              )}
+            </section>
           </div>
-          <article className="article">
-            <h2 className="articleTitle">{selectedNews.name}</h2>
-            <p className="articleDescription">{selectedNews.description}</p>
-            <a className="articleLink" href={selectedNews.url} target="__blank">
-              이동
-            </a>
-            <h4 className="articlePublished">
-              {new Date(selectedNews.datePublished).toLocaleString()}
-            </h4>
-          </article>
+          {articles.map((article, index) => (
+            <article key={`article.${index}`} className="my-4 border-b-2 pb-2">
+              <h2 className="text-2xl font-semibold">{article.name}</h2>
+              <picture>
+                <img
+                  src={article.thumbnail.split("&")[0]}
+                  alt={`Thumbnail ${index}`}
+                  className="my-4"
+                />
+              </picture>
+              <p className="py-2 text-lg">{article.description}</p>
+              <a
+                href={article.url}
+                target="__blank"
+                className="font-semibold text-slate-200"
+              >
+                이동
+              </a>
+              <h4 className="text-slate-50 font-semibold mt-2">
+                {new Date(article.datePublished).toLocaleString()}
+              </h4>
+            </article>
+          ))}
         </main>
-        <section className="buttons">
+        {/* <section>
           <button
-            className="circleButton"
             onClick={() => {
               if (newsIndex <= 0) {
                 return;
@@ -205,7 +213,6 @@ function Main(props: { articles: NewsModel[] }) {
           </button>
           {status.isPlaying && (
             <button
-              className="circleButton"
               onClick={() => {
                 synthesis?.pause();
                 setStatus({
@@ -219,7 +226,6 @@ function Main(props: { articles: NewsModel[] }) {
           )}
           {!status.isPlaying && (
             <button
-              className="circleButton"
               onClick={async () => {
                 const response = await fetch(
                   `/api/news?url=${encodeURIComponent(selectedNews.url)}`,
@@ -252,7 +258,6 @@ function Main(props: { articles: NewsModel[] }) {
           )}
           {!status.isPlaying && status.isPaused && (
             <button
-              className="circleButton"
               onClick={() => {
                 synthesis?.resume();
                 setStatus({
@@ -266,7 +271,6 @@ function Main(props: { articles: NewsModel[] }) {
           )}
           {status.isPlaying && (
             <button
-              className="circleButton"
               onClick={() => {
                 synthesis?.cancel();
                 setStatus({
@@ -279,7 +283,6 @@ function Main(props: { articles: NewsModel[] }) {
             </button>
           )}
           <button
-            className="circleButton"
             onClick={() => {
               if (newsIndex + 1 === articles.length) {
                 setNewsIndex(0);
@@ -295,7 +298,7 @@ function Main(props: { articles: NewsModel[] }) {
           >
             <NavigateNext />
           </button>
-        </section>
+        </section> */}
       </div>
     </>
   );
