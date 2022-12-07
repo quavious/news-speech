@@ -11,17 +11,21 @@ export default async function handler(
     return res.status(401).json(null);
   }
   const userAgent = req.headers["x-user-agent"] as string;
-  const response = await fetch(decodeURIComponent(url), {
+  const decodedUrl = decodeURIComponent(url);
+  const newsId = decodedUrl.split("/").pop()?.split("-").pop();
+  if (typeof newsId !== "string") {
+    return res.status(404).json(null);
+  }
+  const newsDataUrl = `https://assets.msn.com/content/view/v2/Detail/en-us/${newsId}`;
+  const response = await fetch(decodeURIComponent(newsDataUrl), {
     headers: {
       "user-agent": userAgent,
     },
   });
-  const html = await response.text();
-  const textArray = load(html)("#dic_area")
-    .text()
-    .split("\n")
-    .map((el) => el.trim())
-    .filter((el) => el.length > 0);
+  const obj = await response.json();
+  const html = "<!doctype html><html>" + obj.body + "</html>";
+  const paragraphArray = load(html)("p").toArray();
+  const textArray = paragraphArray.map((el) => load(el).text().trim());
   return res.status(200).json({
     textArray,
   });
