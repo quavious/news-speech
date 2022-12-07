@@ -23,7 +23,7 @@ interface NewsModel {
 
 export const getStaticProps: GetStaticProps = async (context) => {
   const response = await fetch(
-    `https://api.bing.microsoft.com/v7.0/news?mkt=ko-KR&sortby=date&textDecorations=true&textFormat=HTML&originalImg=true&count=20`,
+    `https://api.bing.microsoft.com/v7.0/news?mkt=ko-KR&sortby=date&textDecorations=true&textFormat=HTML&originalImg=true&count=40`,
     {
       headers: {
         "Ocp-Apim-Subscription-Key": process.env.BING_API_KEY ?? "",
@@ -101,18 +101,7 @@ function Main(props: { articles: NewsModel[] }) {
       isPaused: false,
     });
     for (const article of articles) {
-      const response = await fetch(
-        `/api/news?url=${encodeURIComponent(article.url)}`,
-        {
-          headers: {
-            "x-user-agent": global.navigator.userAgent,
-          },
-        }
-      );
-      const data: { textArray: string[] } = await response.json();
-      if (data.textArray.length <= 0) {
-      }
-      const array = [article.name, ...data.textArray];
+      const array = [article.name, article.description];
       for (let index = 0; index < array.length; index++) {
         const utterance = new SpeechSynthesisUtterance(array[index]);
         utterance.voice = voice;
@@ -121,10 +110,6 @@ function Main(props: { articles: NewsModel[] }) {
         utterance.volume = 1;
         synthesis?.speak(utterance);
       }
-      if (!status.isPlaying) {
-        break;
-      }
-      await new Promise((res, _) => setTimeout(() => res(0), 6000));
     }
   }
 
@@ -181,7 +166,9 @@ function Main(props: { articles: NewsModel[] }) {
                   className="my-4"
                 />
               </picture>
-              <p className="py-2 text-lg">{article.description}</p>
+              <p className="py-2 text-lg whitespace-pre-line">
+                {article.description}
+              </p>
               <a
                 href={article.url}
                 target="__blank"
